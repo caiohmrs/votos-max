@@ -14,7 +14,7 @@ from dados import LARANJA, botao_pagina, busca_escola, cabecalho, filtra, locais
 
 df = locais()
 
-cabecalho("Votação do Max Maciel 50100",
+cabecalho("Votação Max Maciel 50100",
           "Deputado Distrital · DF · Eleições 2026 — votos por local de votação (arquivos de urna do TSE)")
 
 # topo: filtro de zona + botão para a comparação
