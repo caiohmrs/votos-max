@@ -1,8 +1,11 @@
 """Página 1 — Votos do Max por local de votação (só os votos do Max).
 
 Colunas: zona, RA, escola e votos do Max.
+Modos de visualização: Tabela (padrão), Cartões (bom no celular) e Ranking em gráfico.
 Os números de contexto (eleitores, abstenções, brancos, nulos) ficam na página Comparação.
 """
+import html
+
 import altair as alt
 import folium
 import pandas as pd
@@ -36,16 +39,17 @@ for _, r in f.iterrows():
         {str(r['endereco']).title()}<br><br>
         <b>Max: {n(r['votos_max'])} votos</b>
         </div>""",
-        max_width=290,
+        max_width=260,
     )
     folium.CircleMarker(
         location=[r["latitude"], r["longitude"]],
         radius=5, color="#b45309", weight=1.5, fill=True, fillColor=AMARELO, fillOpacity=0.85,
         tooltip=f"{r['escola'].title()} — {n(r['votos_max'])} votos", popup=popup,
     ).add_to(m)
-st_folium(m, height=560, width=None, returned_objects=[])
+# use_container_width garante que o mapa caiba na largura da tela (o padrão de 500px estourava no celular)
+st_folium(m, height=440, use_container_width=True, returned_objects=[])
 
-# ------------------------------------------------------------------ ranking
+# ------------------------------------------------------------------ lista
 st.divider()
 st.subheader("Locais por votos do Max")
 st.caption("Ordenado do maior para o menor — nada é escondido, aparecem os 622 locais "
@@ -56,24 +60,36 @@ rank = (f[["zona", "ra", "escola", "votos_max"]]
         .sort_values("Max", ascending=False)
         .reset_index(drop=True))
 
-modo = st.radio("Como ver", ["Barras na tabela", "Ranking em gráfico"], horizontal=True, key="max_modo")
+modo = st.radio(
+    "Como ver", ["Tabela", "Cartões (celular)", "Ranking em gráfico"],
+    horizontal=True, key="max_modo",
+)
 
-if modo == "Barras na tabela":
-    maior = int(rank["Max"].max()) or 1
-    st.dataframe(
-        rank, hide_index=True, width="stretch", height=560,
-        column_config={
-            "zona": st.column_config.TextColumn("zona", width=60),
-            "RA": st.column_config.TextColumn("RA", width=230),
-            "escola": st.column_config.TextColumn("escola", width=520),
-            "Max": st.column_config.ProgressColumn("Max", min_value=0, max_value=maior, format="%d", width=260),
-        },
-    )
+if modo == "Tabela":
+    # sem largura fixa por coluna: no celular a tabela encolhe e rola em vez de ser cortada
+    st.dataframe(rank, hide_index=True, width="stretch", height=560)
+
+elif modo == "Cartões (celular)":
+    quantos = st.slider("Quantos locais mostrar", 10, max(10, len(rank)), min(50, max(10, len(rank))), step=10)
+    partes = []
+    for _, r in rank.head(quantos).iterrows():
+        partes.append(
+            f'<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:6px;'
+            f'border:1px solid rgba(128,128,128,.28);border-radius:10px">'
+            f'<div style="flex:1;min-width:0">'
+            f'<div style="font-weight:600;line-height:1.25;overflow-wrap:anywhere">{html.escape(str(r["escola"]))}</div>'
+            f'<div style="font-size:12px;opacity:.65">{html.escape(str(r["RA"]))} · zona {int(r["zona"])}</div>'
+            f'</div>'
+            f'<div style="font-weight:700;font-size:19px;white-space:nowrap">{n(r["Max"])}</div>'
+            f'</div>'
+        )
+    st.markdown("".join(partes), unsafe_allow_html=True)
+
 else:
-    quantos = st.slider("Quantos locais mostrar", 10, min(200, max(20, len(rank))), 30, step=10)
+    quantos = st.slider("Quantos locais mostrar no gráfico", 10, min(200, max(20, len(rank))), 30, step=10)
     top = rank.head(quantos)
     base = alt.Chart(top).encode(
-        y=alt.Y("escola:N", sort="-x", title=None, axis=alt.Axis(labelLimit=330)),
+        y=alt.Y("escola:N", sort="-x", title=None, axis=alt.Axis(labelLimit=300)),
         x=alt.X("Max:Q", title="votos do Max"),
     )
     barras = base.mark_bar(color=AMARELO, cornerRadiusEnd=3).encode(
