@@ -10,14 +10,12 @@ import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
-from dados import botao_pagina, busca_escola, filtra, locais, n, seletor_zonas
-
-AMARELO = "#f59e0b"
+from dados import LARANJA, botao_pagina, busca_escola, cabecalho, filtra, locais, n, seletor_zonas
 
 df = locais()
 
-st.title("Votação do Max Maciel 50100 — Deputado Distrital (DF)")
-st.caption("Eleições 2026 · votos por local de votação (arquivos de urna do TSE)")
+cabecalho("Votação do Max Maciel 50100",
+          "Deputado Distrital · DF · Eleições 2026 — votos por local de votação (arquivos de urna do TSE)")
 
 # topo: filtro de zona + botão para a comparação
 c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
@@ -49,7 +47,7 @@ for _, r in f.iterrows():
     )
     folium.CircleMarker(
         location=[r["latitude"], r["longitude"]],
-        radius=5, color="#b45309", weight=1.5, fill=True, fillColor=AMARELO, fillOpacity=0.85,
+        radius=5, color="#b34700", weight=1.5, fill=True, fillColor=LARANJA, fillOpacity=0.85,
         tooltip=f"{r['escola'].title()} — {n(r['votos_max'])} votos", popup=popup,
     ).add_to(m)
 # use_container_width garante que o mapa caiba na largura da tela (o padrão de 500px estourava no celular)
@@ -78,14 +76,9 @@ if modo == "Cartões":
     partes = []
     for _, r in rank.iterrows():
         partes.append(
-            f'<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:6px;'
-            f'border:1px solid rgba(128,128,128,.28);border-radius:10px">'
-            f'<div style="flex:1;min-width:0">'
-            f'<div style="font-weight:600;line-height:1.25;overflow-wrap:anywhere">{html.escape(str(r["escola"]))}</div>'
-            f'<div style="font-size:12px;opacity:.65">{html.escape(str(r["RA"]))} · zona {int(r["zona"])}</div>'
-            f'</div>'
-            f'<div style="font-weight:700;font-size:19px;white-space:nowrap">{n(r["Max"])}</div>'
-            f'</div>'
+            f'<div class="loc"><div class="n"><b>{html.escape(str(r["escola"]))}</b>'
+            f'<span>{html.escape(str(r["RA"]))} · zona {int(r["zona"])}</span></div>'
+            f'<div class="v">{n(r["Max"])}</div></div>'
         )
     st.markdown("".join(partes), unsafe_allow_html=True)
 else:

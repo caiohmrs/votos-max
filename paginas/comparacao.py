@@ -8,20 +8,16 @@ import html
 import pandas as pd
 import streamlit as st
 
-from dados import (CONTEXTO, botao_pagina, busca_escola, filtra, locais, n,
-                   presidenciáveis, seletor_zonas)
-
-AMARELO = "#f59e0b"    # Max
-AZUL = "#3b82f6"       # presidenciáveis
-CINZA = "#94a3b8"      # brancos, nulos, abstenções
+from dados import (AZUL, CINZA, CONTEXTO, LARANJA, botao_pagina, busca_escola, cabecalho,
+                   filtra, locais, n, presidenciáveis, seletor_zonas)
 
 df = locais()
 todos_pres = presidenciáveis(df)          # [(coluna, rótulo)] do mais votado para o menos
 nome_col = dict(todos_pres)
 
-st.title("Comparação — Max x presidenciáveis")
-st.caption("Eleições 2026 · votos do Max por local, lado a lado com os presidenciáveis escolhidos "
-           "e com brancos, nulos e abstenções do local")
+cabecalho("Comparação — Max x presidenciáveis",
+          "Eleições 2026 · votos do Max por local, lado a lado com os presidenciáveis escolhidos, "
+          "abstenções, brancos e nulos")
 
 c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
 with c1:
@@ -61,23 +57,9 @@ if modo == "Cartões":
     if not escolhidos:
         st.info("Escolha um ou mais presidenciáveis acima para comparar com o Max — por enquanto os cartões "
                 "mostram só o Max, abstenções, brancos e nulos.")
-    st.markdown(
-        """<style>
-        .cmp{margin-bottom:8px;padding:10px 12px;border:1px solid rgba(128,128,128,.28);border-radius:10px}
-        .cmp .e{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
-        .cmp .s{font-size:12px;opacity:.65;margin-bottom:2px}
-        .cmp .l{display:flex;align-items:center;gap:8px;margin-top:3px}
-        .cmp .r{flex:0 0 40%;font-size:12px;line-height:1.15;overflow-wrap:anywhere}
-        .cmp .b{flex:1;min-width:0}
-        .cmp .b i{display:block;height:9px;border-radius:5px}
-        .cmp .v{flex:0 0 62px;text-align:right;font-size:13px;white-space:nowrap}
-        .cmp .v.f{font-weight:700}
-        </style>""",
-        unsafe_allow_html=True,
-    )
     blocos = []
     for _, r in f.sort_values("votos_max", ascending=False).iterrows():
-        valores = [("Max", int(r["votos_max"]), AMARELO, True)]
+        valores = [("Max", int(r["votos_max"]), LARANJA, True)]
         valores += [(nome_col[c], int(r[c]), AZUL, False) for c in escolhidos]
         valores += [("Abstenções", int(r["abstencao"]), CINZA, False),
                     ("Brancos", int(r["brancos"]), CINZA, False),

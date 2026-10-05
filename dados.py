@@ -48,6 +48,45 @@ def n(v) -> str:
     return f"{int(v):,}".replace(",", ".")
 
 
+# ------------------------------------------------------------------ identidade visual
+# paleta do app do PDAF (#ff6a00 laranja + #1f2937 grafite), que funciona nos dois temas
+LARANJA = "#ff6a00"    # Max
+AZUL = "#3b82f6"       # presidenciáveis
+CINZA = "#94a3b8"      # abstenções, brancos, nulos
+
+CSS = """<style>
+/* faixa de título */
+.faixa{background:#1f2937;border-bottom:4px solid #ff6a00;border-radius:10px;
+       padding:14px 18px;margin-bottom:16px}
+.faixa .t{color:#ff6a00;font-weight:800;font-size:26px;line-height:1.15}
+.faixa .s{color:#ffffff;opacity:.9;font-size:14px;margin-top:2px}
+/* cartões da página do Max */
+.loc{margin-bottom:6px;padding:10px 12px;border:1px solid rgba(128,128,128,.32);border-radius:10px;
+     display:flex;align-items:center;gap:12px}
+.loc .n{flex:1;min-width:0}
+.loc .n b{font-weight:600;line-height:1.25;overflow-wrap:anywhere;display:block}
+.loc .n span{font-size:12px;opacity:.65}
+.loc .v{font-weight:700;font-size:19px;white-space:nowrap;color:#ff6a00}
+/* cartões da comparação */
+.cmp{margin-bottom:8px;padding:10px 12px;border:1px solid rgba(128,128,128,.32);border-radius:10px}
+.cmp .e{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.cmp .s{font-size:12px;opacity:.65;margin-bottom:2px}
+.cmp .l{display:flex;align-items:center;gap:8px;margin-top:3px}
+.cmp .r{flex:0 0 40%;font-size:12px;line-height:1.15;overflow-wrap:anywhere}
+.cmp .b{flex:1;min-width:0}
+.cmp .b i{display:block;height:9px;border-radius:5px}
+.cmp .v{flex:0 0 62px;text-align:right;font-size:13px;white-space:nowrap}
+.cmp .v.f{font-weight:700}
+</style>"""
+
+
+def cabecalho(titulo: str, subtitulo: str) -> None:
+    st.markdown(
+        f'{CSS}<div class="faixa"><div class="t">{titulo}</div><div class="s">{subtitulo}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 # ------------------------------------------------------------------ filtros na página
 def seletor_zonas(df: pd.DataFrame, prefixo: str):
     """Multiselect de zona/RA desenhado na página (não na barra lateral)."""
