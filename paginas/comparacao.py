@@ -1,19 +1,27 @@
-"""Página 2 — Comparação: contexto do eleitorado e contraste com os presidenciáveis.
+"""Página 2 — Comparação: votos do Max contra os presidenciáveis escolhidos, brancos, nulos e abstenções.
 
-Tudo na própria página (sem barra lateral), com botão de volta para a votação do Max.
+Visão principal em cartões (um por local), com barra proporcional em cada linha para
+comparar de imediato. A tabela completa fica como visão alternativa.
 """
+import html
+
 import pandas as pd
 import streamlit as st
 
 from dados import (CONTEXTO, botao_pagina, busca_escola, filtra, locais, n,
                    presidenciáveis, seletor_zonas)
 
+AMARELO = "#f59e0b"    # Max
+AZUL = "#3b82f6"       # presidenciáveis
+CINZA = "#94a3b8"      # brancos, nulos, abstenções
+
 df = locais()
 todos_pres = presidenciáveis(df)          # [(coluna, rótulo)] do mais votado para o menos
 nome_col = dict(todos_pres)
 
-st.title("Comparação — contexto e presidenciáveis")
-st.caption("Eleições 2026 · votos do Max por local, ao lado dos números do local e dos candidatos a presidente")
+st.title("Comparação — Max x presidenciáveis")
+st.caption("Eleições 2026 · votos do Max por local, lado a lado com os presidenciáveis escolhidos "
+           "e com brancos, nulos e abstenções do local")
 
 c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
 with c1:
@@ -26,7 +34,7 @@ with c3:
     busca = busca_escola("comp")
 with c4:
     escolhidos = st.multiselect(
-        "Colunas de presidenciáveis para comparar",
+        "Presidenciáveis para comparar",
         [c for c, _ in todos_pres],
         format_func=lambda c: nome_col[c],
         key="comp_pres",
@@ -35,7 +43,6 @@ with c4:
 
 f = filtra(df, zonas=sel_z, busca=busca)
 
-# ------------------------------------------------------------------ indicadores
 k = st.columns(5)
 k[0].metric("Votos do Max", n(f["votos_max"].sum()))
 k[1].metric("Eleitores", n(f["eleitores"].sum()))
@@ -43,21 +50,64 @@ k[2].metric("Abstenções", n(f["abstencao"].sum()))
 k[3].metric("Brancos", n(f["brancos"].sum()))
 k[4].metric("Nulos", n(f["nulos"].sum()))
 
-# ------------------------------------------------------------------ tabela por local
+# ------------------------------------------------------------------ local por local
+st.divider()
 st.subheader(f"Local por local — {n(len(f))} locais")
-rotulos = {"escola": "escola", "bairro": "bairro", "eleitores": "eleitores",
-           "compareceram": "compareceram", "abstencao": "abstenções",
-           "brancos": "brancos", "nulos": "nulos", "votos_max": "Max"}
-colunas = ["zona", "ra", "local", "escola", "bairro"] + CONTEXTO + ["votos_max"] + list(escolhidos)
-tabela = f[colunas].copy().rename(columns={**rotulos, **{c: nome_col[c] for c in escolhidos}})
-st.dataframe(tabela, hide_index=True, width="stretch", height=430)
-st.caption(
-    "`compareceram` é o comparecimento do cargo de **deputado distrital** (é o mesmo eleitorado do Max). "
-    "Os votos de presidente na mesma linha vêm da urna daquela seção."
-)
+modo = st.radio("Como ver", ["Cartões", "Tabela"], horizontal=True, key="comp_modo")
+st.caption("🟡 Max · 🔵 presidenciável escolhido · ⚪ abstenções, brancos e nulos — a barra de cada linha "
+           "é proporcional ao maior número do cartão. Eleitores e comparecimento ficam na visão em Tabela.")
+
+if modo == "Cartões":
+    if not escolhidos:
+        st.info("Escolha um ou mais presidenciáveis acima para comparar com o Max — por enquanto os cartões "
+                "mostram só o Max, abstenções, brancos e nulos.")
+    st.markdown(
+        """<style>
+        .cmp{margin-bottom:8px;padding:10px 12px;border:1px solid rgba(128,128,128,.28);border-radius:10px}
+        .cmp .e{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+        .cmp .s{font-size:12px;opacity:.65;margin-bottom:2px}
+        .cmp .l{display:flex;align-items:center;gap:8px;margin-top:3px}
+        .cmp .r{flex:0 0 40%;font-size:12px;line-height:1.15;overflow-wrap:anywhere}
+        .cmp .b{flex:1;min-width:0}
+        .cmp .b i{display:block;height:9px;border-radius:5px}
+        .cmp .v{flex:0 0 62px;text-align:right;font-size:13px;white-space:nowrap}
+        .cmp .v.f{font-weight:700}
+        </style>""",
+        unsafe_allow_html=True,
+    )
+    blocos = []
+    for _, r in f.sort_values("votos_max", ascending=False).iterrows():
+        valores = [("Max", int(r["votos_max"]), AMARELO, True)]
+        valores += [(nome_col[c], int(r[c]), AZUL, False) for c in escolhidos]
+        valores += [("Abstenções", int(r["abstencao"]), CINZA, False),
+                    ("Brancos", int(r["brancos"]), CINZA, False),
+                    ("Nulos", int(r["nulos"]), CINZA, False)]
+        maior = max(v for _, v, _, _ in valores) or 1
+        linhas = "".join(
+            f'<div class="l"><div class="r">{html.escape(rot)}</div>'
+            f'<div class="b"><i style="width:{100 * val / maior:.1f}%;background:{cor}"></i></div>'
+            f'<div class="v{" f" if forte else ""}">{n(val)}</div></div>'
+            for rot, val, cor, forte in valores
+        )
+        blocos.append(
+            f'<div class="cmp"><div class="e">{html.escape(str(r["escola"]))}</div>'
+            f'<div class="s">{html.escape(str(r["ra"]))} · zona {int(r["zona"])}</div>{linhas}</div>'
+        )
+    st.markdown("".join(blocos), unsafe_allow_html=True)
+else:
+    rotulos = {"escola": "escola", "bairro": "bairro", "eleitores": "eleitores",
+               "compareceram": "compareceram", "abstencao": "abstenções",
+               "brancos": "brancos", "nulos": "nulos", "votos_max": "Max"}
+    colunas = ["zona", "ra", "local", "escola", "bairro"] + CONTEXTO + ["votos_max"] + list(escolhidos)
+    tabela = f[colunas].copy().rename(columns={**rotulos, **{c: nome_col[c] for c in escolhidos}})
+    st.dataframe(tabela, hide_index=True, width="stretch", height=430)
+    st.caption("`compareceram` é o comparecimento do cargo de **deputado distrital** (mesmo eleitorado do Max). "
+               "Os votos de presidente na mesma linha vêm da urna daquela seção.")
+
 st.download_button(
     "Baixar CSV (locais filtrados)",
-    tabela.to_csv(index=False, sep=";").encode("utf-8-sig"),
+    f[["zona", "ra", "escola", "eleitores", "compareceram", "abstencao", "brancos", "nulos", "votos_max"]
+      + list(escolhidos)].to_csv(index=False, sep=";").encode("utf-8-sig"),
     "locais_max_comparacao_2026.csv", "text/csv",
 )
 
