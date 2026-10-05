@@ -3,6 +3,8 @@
 Duas páginas:
   1. Votos do Max     — mapa dos locais de votação e os votos do Max em cada um.
   2. Comparação       — eleitores, abstenções, brancos, nulos e o contraste com os presidenciáveis.
+
+A navegação fica escondida: a troca de página é feita por botão dentro das páginas.
 """
 import streamlit as st
 
@@ -12,4 +14,4 @@ paginas = [
     st.Page("paginas/votos_max.py", title="Votos do Max", icon="🗳️", default=True),
     st.Page("paginas/comparacao.py", title="Comparação", icon="📊"),
 ]
-st.navigation(paginas).run()
+st.navigation(paginas, position="hidden").run()

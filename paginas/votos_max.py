@@ -1,26 +1,32 @@
 """Página 1 — Votos do Max por local de votação (só os votos do Max).
 
-Colunas: zona, RA, escola e votos do Max.
-Modos de visualização: Tabela (padrão), Cartões (bom no celular) e Ranking em gráfico.
-Os números de contexto (eleitores, abstenções, brancos, nulos) ficam na página Comparação.
+Tudo na própria página (sem barra lateral): filtro de zona no topo, botão para a
+comparação, mapa e a lista em cartões (padrão) ou tabela, com a busca por escola acima.
 """
 import html
 
-import altair as alt
 import folium
 import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
-from dados import filtros, locais, n
+from dados import botao_pagina, busca_escola, filtra, locais, n, seletor_zonas
 
 AMARELO = "#f59e0b"
 
 df = locais()
-f = filtros(df, "max")
 
 st.title("Votação do Max Maciel 50100 — Deputado Distrital (DF)")
 st.caption("Eleições 2026 · votos por local de votação (arquivos de urna do TSE)")
+
+# topo: filtro de zona + botão para a comparação
+c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
+with c1:
+    sel_z = seletor_zonas(df, "max")
+with c2:
+    botao_pagina("📊 Abrir a comparação", "paginas/comparacao.py", "max_ir_comp")
+
+f = filtra(df, zonas=sel_z)
 
 k1, k2 = st.columns([1, 3])
 k1.metric("Votos do Max", n(f["votos_max"].sum()))
@@ -52,27 +58,25 @@ st_folium(m, height=440, use_container_width=True, returned_objects=[])
 # ------------------------------------------------------------------ lista
 st.divider()
 st.subheader("Locais por votos do Max")
-st.caption("Ordenado do maior para o menor — nada é escondido, aparecem os 622 locais "
-           "(filtrados só pelo que você escolher na lateral).")
 
-rank = (f[["zona", "ra", "escola", "votos_max"]]
+cb, cv = st.columns([3, 2], vertical_alignment="bottom")
+with cb:
+    busca = busca_escola("max")
+with cv:
+    modo = st.radio("Como ver", ["Cartões", "Tabela"], horizontal=True, key="max_modo")
+
+lista = filtra(f, busca=busca)
+st.caption(f"Mostrando **{n(len(lista))}** de {n(len(f))} locais, do maior para o menor — "
+           "a busca filtra esta lista (o mapa acima continua com a zona inteira).")
+
+rank = (lista[["zona", "ra", "escola", "votos_max"]]
         .rename(columns={"ra": "RA", "votos_max": "Max"})
         .sort_values("Max", ascending=False)
         .reset_index(drop=True))
 
-modo = st.radio(
-    "Como ver", ["Tabela", "Cartões (celular)", "Ranking em gráfico"],
-    horizontal=True, key="max_modo",
-)
-
-if modo == "Tabela":
-    # sem largura fixa por coluna: no celular a tabela encolhe e rola em vez de ser cortada
-    st.dataframe(rank, hide_index=True, width="stretch", height=560)
-
-elif modo == "Cartões (celular)":
-    quantos = st.slider("Quantos locais mostrar", 10, max(10, len(rank)), min(50, max(10, len(rank))), step=10)
+if modo == "Cartões":
     partes = []
-    for _, r in rank.head(quantos).iterrows():
+    for _, r in rank.iterrows():
         partes.append(
             f'<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:6px;'
             f'border:1px solid rgba(128,128,128,.28);border-radius:10px">'
@@ -84,20 +88,8 @@ elif modo == "Cartões (celular)":
             f'</div>'
         )
     st.markdown("".join(partes), unsafe_allow_html=True)
-
 else:
-    quantos = st.slider("Quantos locais mostrar no gráfico", 10, min(200, max(20, len(rank))), 30, step=10)
-    top = rank.head(quantos)
-    base = alt.Chart(top).encode(
-        y=alt.Y("escola:N", sort="-x", title=None, axis=alt.Axis(labelLimit=300)),
-        x=alt.X("Max:Q", title="votos do Max"),
-    )
-    barras = base.mark_bar(color=AMARELO, cornerRadiusEnd=3).encode(
-        tooltip=[alt.Tooltip("escola:N", title="escola"), alt.Tooltip("RA:N", title="RA"),
-                 alt.Tooltip("zona:N", title="zona"), alt.Tooltip("Max:Q", title="votos do Max")],
-    )
-    valores = base.mark_text(align="left", dx=4, fontSize=11, color="#888").encode(text="Max:Q")
-    st.altair_chart((barras + valores).properties(height=max(320, 26 * quantos)))
+    st.dataframe(rank, hide_index=True, width="stretch", height=560)
 
 st.download_button(
     "Baixar CSV",

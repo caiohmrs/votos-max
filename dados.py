@@ -1,7 +1,8 @@
 """Carregamento e filtros dos dados do painel — compartilhado pelas páginas.
 
-Colunas de contexto (eleitores, compareceram, abstenções, brancos, nulos) ficam
-disponíveis aqui, mas só são mostradas na página de Comparação.
+Sem barra lateral: os filtros são desenhados na própria página.
+Colunas de contexto (eleitores, compareceram, abstenções, brancos, nulos) só aparecem
+na página de Comparação.
 """
 import os
 
@@ -47,22 +48,33 @@ def n(v) -> str:
     return f"{int(v):,}".replace(",", ".")
 
 
-def filtros(df: pd.DataFrame, prefixo: str, com_presidentes: bool = False):
-    """Barra lateral de filtros (manuais, nunca automáticos). Devolve o DataFrame filtrado."""
-    with st.sidebar:
-        st.header("Filtros")
-        zonas = sorted(df["zona"].unique(), key=lambda z: int(z))
-        rotulos = {z: f"zona {int(z):02d} · {df.loc[df['zona'] == z, 'ra'].iloc[0]}" for z in zonas}
-        sel_z = st.multiselect("Zona / RA", zonas, format_func=lambda z: rotulos[z], key=f"{prefixo}_zonas")
-        busca = st.text_input("Escola ou bairro contém", "", key=f"{prefixo}_busca")
+# ------------------------------------------------------------------ filtros na página
+def seletor_zonas(df: pd.DataFrame, prefixo: str):
+    """Multiselect de zona/RA desenhado na página (não na barra lateral)."""
+    zonas = sorted(df["zona"].unique(), key=lambda z: int(z))
+    rotulos = {z: f"zona {int(z):02d} · {df.loc[df['zona'] == z, 'ra'].iloc[0]}" for z in zonas}
+    return st.multiselect(
+        "Zona / RA", zonas, format_func=lambda z: rotulos[z],
+        key=f"{prefixo}_zonas", placeholder="todas as zonas",
+    )
 
-    f = df.copy()
-    if sel_z:
-        f = f[f["zona"].isin(sel_z)]
-    if busca.strip():
-        q = busca.strip().upper()
-        f = f[
-            f["escola"].str.upper().str.contains(q, regex=False)
-            | f["bairro"].str.upper().str.contains(q, regex=False)
-        ]
+
+def busca_escola(prefixo: str, label: str = "Buscar escola"):
+    """Caixa de busca por nome de escola, desenhada na página."""
+    return st.text_input(label, "", key=f"{prefixo}_busca", placeholder="digite parte do nome da escola")
+
+
+def filtra(df: pd.DataFrame, zonas=None, busca: str = "") -> pd.DataFrame:
+    """Filtros manuais (nunca automáticos)."""
+    f = df
+    if zonas:
+        f = f[f["zona"].isin(zonas)]
+    if busca and busca.strip():
+        f = f[f["escola"].str.upper().str.contains(busca.strip().upper(), regex=False)]
     return f
+
+
+def botao_pagina(rotulo: str, destino: str, key: str):
+    """Botão que leva para a outra página (a navegação fica escondida)."""
+    if st.button(rotulo, key=key, width="stretch"):
+        st.switch_page(destino)
